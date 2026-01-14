@@ -1,0 +1,9 @@
+from pygame import *
+from random import randint
+
+init()
+size = 800, 600
+window = display.set_mode(size)
+clock = time.Clock()
+
+main_font = font.SysFont("arial", 20 )
