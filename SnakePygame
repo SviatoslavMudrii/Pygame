@@ -174,13 +174,13 @@ while run:
 
         hx, hy = snake.body[0], 480
 
-        # 🍏 ЗІТКНЕННЯ З ЯБЛУКОМ
+        #  ЗІТКНЕННЯ З ЯБЛУКОМ
         if apple.active and abs(hx - apple.x) < 25 and abs(hy - apple.y) < 25:
             snake.length += 1
             score += 1
             apple.active = False
 
-        # 💥 ЗІТКНЕННЯ З ПЕРЕШКОДАМИ
+        #  ЗІТКНЕННЯ З ПЕРЕШКОДАМИ
         for o in obstacles:
             if o.x < hx < o.x + o.w and o.y < hy < o.y + o.h:
                 state = "gameover"
