@@ -1,60 +1,222 @@
 from pygame import *
-from random import randint
+from random import randint, choice
 
 init()
 
+WIDTH, HEIGHT = 800, 600
+window = display.set_mode((WIDTH, HEIGHT))
+display.set_caption("Snake Runner")
 
-size = 800, 600
-window = display.set_mode(size)
 clock = time.Clock()
 
-small_font = font.SysFont("arial", 40)
-big_font = font.SysFont("arial", 120)
+road_left = 200
+road_right = 600
 
-#Зображення
-head1_img = transform.scale(image.load("images/snake1.png"), (40,40))
-head2_img = transform.scale(image.load("images/snake2.png"), (40,40))
-head3_img = transform.scale(image.load("images/snake3.png"), (40,40))
+font_score = font.SysFont("arial", 40)
+font_menu = font.SysFont("arial", 60)
 
-body1_img = transform.scale(image.load("images/snake1.png"), (40,40))
-body2_img = transform.scale(image.load("images/snake2.png"), (40,40))
-body3_img = transform.scale(image.load("images/snake3.png"), (40,40))
+head_img = transform.scale(image.load("images/SnakeHead.png"), (40, 40))
+body_img = transform.scale(image.load("images/Body.png"), (35, 35))
+apple_img = transform.scale(image.load("images/apple.png"), (30, 30))
+box_img = transform.scale(image.load("images/box.png"), (50, 50))
+bush_img = transform.scale(image.load("images/bush.png"), (50, 50))
+deck_img = transform.scale(image.load("images/deck.png"), (50, 50))
+rock_img = transform.scale(image.load("images/rock.png"), (50, 50))
 
-box_img = transform.scale(image.load("images/box.png"), (50,50))
-bush_img = transform.scale(image.load("images/bush.png"), (50,50))
+road_bg = transform.scale(image.load("images/road.png"), (410, HEIGHT))
+side_bg = transform.scale(image.load("images/side.png"), (210, HEIGHT))
+menu_bg = transform.scale(image.load("images/menu.png"), (WIDTH, HEIGHT))
 
-deck_img = image.load("images/deck.png")
-rock = image.load("images/rock.png")
-
-road_left = 150
-road_right = 650
 
 class Snake:
     def __init__(self):
         self.reset()
 
     def reset(self):
-        self.x = size[0] // 2
-        self.lenght = 3
-        self.body = [self.x] * self.lenght
+        self.x = WIDTH // 2
+        self.length = 3
+        self.body = [self.x] * self.length
         self.dx = 0
 
-
     def move(self):
-        self.x = self.x * self.dx * 5
+        self.x += self.dx * 3
         if self.x < road_left + 20:
             self.x = road_left + 20
         if self.x > road_right - 20:
             self.x = road_right - 20
         self.body.insert(0, self.x)
-        if len(self.body) > self.lenght:
+        if len(self.body) > self.length:
             self.body.pop()
 
     def draw(self):
         for i in range(len(self.body)):
             x_pos = self.body[i]
-            y_pos = 400 + (i * 12)
+            y_pos = 480 + i * 12
             if i == 0:
-                screen.blit(head1_img, (int(x_pos) - 15, y_pos - 15))
+                window.blit(head_img, (int(x_pos) - 20, y_pos - 20))
             else:
-                screen.blit(body1_img, (int(x_pos) - 12, y_pos - 12))
+                window.blit(body_img, (int(x_pos) - 17, y_pos - 17))
+
+
+# ================== ЯБЛУКО З РІДКИМ СПАВНОМ ==================
+class Apple:
+    def __init__(self):
+        self.reset()
+        self.spawn_timer = 0
+        self.spawn_delay = 300   # 300 кадрів = 5 секунд
+        self.active = False
+
+    def reset(self):
+        self.x = randint(road_left + 40, road_right - 40)
+        self.y = randint(-800, -100)
+
+    def update(self, speed):
+        # якщо яблука нема – чекаємо таймер
+        if not self.active:
+            self.spawn_timer += 1
+            if self.spawn_timer >= self.spawn_delay:
+                self.spawn_timer = 0
+                self.active = True
+                self.reset()
+            return
+
+        # рух яблука
+        self.y += speed
+        if self.y > HEIGHT:
+            self.active = False
+
+    def draw(self):
+        if self.active:
+            window.blit(apple_img, (self.x - 15, self.y - 15))
+
+
+# ================== ПЕРЕШКОДИ ==================
+class Obstacle:
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.img = choice([box_img, bush_img, rock_img, deck_img])
+        self.w = self.img.get_width()
+        self.h = self.img.get_height()
+        self.x = randint(road_left + 10, road_right - self.w - 10)
+        self.y = randint(-1000, -100)
+
+    def update(self, speed):
+        self.y += speed
+        if self.y > HEIGHT:
+            self.reset()
+
+    def draw(self):
+        window.blit(self.img, (self.x, self.y))
+
+
+# ================== СТАРТ ГРИ ==================
+def start_game():
+    global snake, apple, obstacles, speed, score
+    snake = Snake()
+    apple = Apple()
+    obstacles = [Obstacle() for _ in range(5)]
+    speed = 3
+    score = 0
+
+
+def draw_button(text, x, y, w, h, color):
+    draw.rect(window, color, (x, y, w, h), border_radius=10)
+    txt = font_score.render(text, True, (255, 255, 255))
+    window.blit(txt, (x + (w - txt.get_width()) // 2, y + (h - txt.get_height()) // 2))
+    return Rect(x, y, w, h)
+
+
+start_game()
+state = "menu"
+run = True
+
+while run:
+    mouse_pos = mouse.get_pos()
+    click = False
+
+    for e in event.get():
+        if e.type == QUIT:
+            run = False
+        if e.type == MOUSEBUTTONDOWN and e.button == 1:
+            click = True
+
+        if state == "game":
+            if e.type == KEYDOWN:
+                if e.key in (K_LEFT, K_a):
+                    snake.dx = -1
+                if e.key in (K_RIGHT, K_d):
+                    snake.dx = 1
+            if e.type == KEYUP:
+                if e.key in (K_LEFT, K_RIGHT, K_a, K_d):
+                    snake.dx = 0
+
+
+    # ================== МЕНЮ ==================
+    if state == "menu":
+        window.blit(menu_bg, (0, 0))
+        btn_play = draw_button("Грати", 300, 300, 200, 60, (50, 150, 50))
+        btn_skin = draw_button("Одежа", 300, 400, 200, 60, (100, 100, 100))
+
+        if click and btn_play.collidepoint(mouse_pos):
+            start_game()
+            state = "game"
+
+
+    # ================== ГРА ==================
+    elif state == "game":
+        snake.move()
+        apple.update(speed)
+
+        for o in obstacles:
+            o.update(speed)
+
+        hx, hy = snake.body[0], 480
+
+        # 🍏 ЗІТКНЕННЯ З ЯБЛУКОМ
+        if apple.active and abs(hx - apple.x) < 25 and abs(hy - apple.y) < 25:
+            snake.length += 1
+            score += 1
+            apple.active = False
+
+        # 💥 ЗІТКНЕННЯ З ПЕРЕШКОДАМИ
+        for o in obstacles:
+            if o.x < hx < o.x + o.w and o.y < hy < o.y + o.h:
+                state = "gameover"
+
+        window.blit(side_bg, (0, 0))
+        window.blit(side_bg, (600, 0))
+        window.blit(road_bg, (200, 0))
+
+        apple.draw()
+        for o in obstacles:
+            o.draw()
+        snake.draw()
+
+        text = font_score.render(f"Score: {score}", True, (255, 255, 255))
+        window.blit(text, (20, 20))
+
+
+    # ================== GAME OVER ==================
+    elif state == "gameover":
+        window.fill((50, 0, 0))
+        txt_over = font_menu.render("Куда ти жинеш?, може щераз?", True, (255, 255, 255))
+        window.blit(txt_over, (WIDTH // 2 - txt_over.get_width() // 2, 100))
+
+        btn_retry = draw_button("ЗАНОВО", 300, 250, 200, 60, (50, 150, 50))
+        btn_to_menu = draw_button("В МЕНЮ", 300, 350, 200, 60, (150, 50, 50))
+
+        if click:
+            if btn_retry.collidepoint(mouse_pos):
+                start_game()
+                state = "game"
+            if btn_to_menu.collidepoint(mouse_pos):
+                start_game()
+                state = "menu"
+
+
+    display.update()
+    clock.tick(60)
+
+quit()
